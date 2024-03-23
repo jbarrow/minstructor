@@ -80,6 +80,27 @@ Then, we can create a new project:
 poetry new minstructor
 ```
 
+This will create a new python package called `minstructor`, with the following structure:
+
+```
+minstructor
+|- minstructor
+|  |- __init__.py
+|- tests
+|  |- __init__.py
+|- poetry.lock
+|- pyproject.toml
+|- README.md
+```
+
+We need two dependencies for this to work, so let's go ahead and get those installed as well:
+
+```sh
+poetry add openai pydantic
+```
+
+And now we're set!
+
 ## Getting Structured Output: Asking for JSON
 
 
