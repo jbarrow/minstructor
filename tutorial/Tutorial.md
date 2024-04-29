@@ -14,7 +14,6 @@ import openai
 
 from pydantic import BaseModel
 
-
 client = instructor.patch(openai.OpenAI())
 
 class Test(BaseModel):
@@ -36,10 +35,9 @@ This is a powerful paradigm, and enables you
 The goal of this tutorial is to build a simpler version of this library, `minstructor`, which walks you through a lot of the core ideas.
 This includes:
 
-- getting structured output into a pydantic object
+- getting structured output into a python object
 - using pydantic for validation and retries
 - using llms as validators
-- different "modes", which allow you to prompt other models (e.g. through AnyScale or multimodal via `gpt-4-vision-preview`)
 
 By the end, we'll be able to do something similar to the above:
 
@@ -103,29 +101,136 @@ And now we're set!
 
 ## Getting Structured Output: Asking for JSON
 
+The simplest way to get structured JSON is to ask the model to return it.
+For instance:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(api_key=<YOUR_API_KEY>)
+
+client.chat.completions.create(
+    messages=[
+        {
+            "role": "system",
+            "content": "You are a world-class information extraction system. Given [X] you extract [Y] must always respond with valid JSON."
+        },
+        {
+            "role": "user",
+            "content": ""
+        }
+    ],
+    model="gpt-4-turbo",
+    temperature=0
+)
+
+print(client.response.choices[0].content)
+```
+
+Response:
+```
+
+```
+
+As you can see, we're getting back valid json embedded in our message.
+However, without some kind of parsing or extracting it's not useful to us in code.
+In addition, the format of the JSON isn't fixed -- they model chooses what keys to use.
+So we can [...]
 
 ## Getting Structured Output: Tool Usage
 
+Thankfully, OpenAI and other LLM providers offer features such as "tool usage," where we can provide a schema to the LLM.
+
+ASIDE: ⚠️ Limitations of Tool Usage
+
+Note, however, that there are differing levels of guardrails.
+OpenAI does not promise that we get back an object that _adheres perfectly to our schema_.
+Only that we get back a _valid json object_.
+This subtlety will lead to some headaches down the line, but we'll look at how to handle those in the validators section [link to validators].
+
+There _are_ providers that will guarantee a return object that adheres to the schema, notably AnyScale and [OTHER PROVIDERS].
+They use a constrained generation approach to ensure that the model can only generate tokens that would adhere to the schema.
+How that works is a topic for a future post, but is an interesting problem in and of itself.
+
+Going back to OpenAI [...]
 
 ## Getting Structured Output: Pydantic
 
-## An Aside: Chain-of-Thought
+Pydantic will be the interface between the LLM and our code.
+We will use it for three things:
+1. to **generate the JSON schema** above,
+2. to **parse the model response** into a python object, and;
+3. to **validate any errors in the model response**.
 
-## Getting Structured Output: Validation
+### Generating JSON Schema
+
+```
+model.model_dumps_schema()
+```
+
+### Parsing the Model Response
+
+```
+model.[]
+```
+
+### Validation
 
 
-## Extension: Better Validators
+## Prompt Engineering Your Pydantic Class
+
+To improve our responses, we can document our object.
+Let's take a look at the json schemas that are returned using some different pydantic features.
+
+### Annotating the Object
+
+Add a description to the object itself:
+
+```python
+class Model(BaseModel):
+    """ comment """
+
+print(model.schema())
+```
+
+### Adding Descriptions and Examples
+
+Add a description to each of the fields.
+Use the Pydantic `Field` object:
+
+```python
+class Model(BaseModel):
+    x: int = Field(..., description="")
+```
+
+### Chain-of-Thought
+
+A really neat benefit of using this approach is that it's easy to do things like chain of thought prompting.
+
+```python
+class Model(BaseModel):
+    chain_of_thought: str = Field(..., description="Think step-by-step to arrive at the right answer.")
+    x: int
+```
+
+## Conclusion
+
+Now we've gotten to a point where we can define a schema in python, prompt the LLM, and get a response back.
 
 
-## Extension: LLM Validation
+## Extension: Modes 101: Supporting AnyScale
 
+This post covers only the core of what instructor does.
+If you want to support, say, Claude (which uses xml for tool usage) or other providers/approaches, then the above code wouldn't be sufficient.
+For this, `instructor` uses the idea of `MODES`, which I have left out for brevity's sake.
 
-## Modes: AnyScale
+But I think it's worthwhile to look at how to support AnyScale, which offers constrained decoding.
 
+## Extension: LLM Validators
 
-## Modes: Structure from Multimodal Prompts
+The validators that we've seen are very simple, and provide checks on types and values.
+But we can use LLMs to validate the textual/semantic content of values as well.
+Doing this requires only writing some custom validators.
 
+## Extension: Metaprogramming Pydantic
 
-## Bonus: Dynamic Structured Objects?
-
-## Afterword
